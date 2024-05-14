@@ -3,6 +3,7 @@ package main
 import (
 	"bytes"
 	"context"
+	"fmt"
 	"io/ioutil"
 	"os"
 	"strings"
@@ -14,6 +15,7 @@ import (
 	"github.com/patrickmn/go-cache"
 	"gocloud.dev/blob"
 	_ "gocloud.dev/blob/azureblob"
+	_ "gocloud.dev/blob/fileblob"
 	_ "gocloud.dev/blob/s3blob"
 	"gocloud.dev/gcerrors"
 )
@@ -30,6 +32,10 @@ func main() {
 
 	r.PUT("/templates/:templatename", func(c *gin.Context) {
 		body, err := c.GetRawData()
+		if err != nil {
+			c.AbortWithError(400, err)
+		}
+
 		templateName := c.Param("templatename")
 
 		bodyStr := string(body)
@@ -93,9 +99,10 @@ func main() {
 			return
 		}
 		if tmpl == nil {
-			c.AbortWithError(404, err)
+			c.AbortWithStatus(404)
 			return
 		}
+		fmt.Println(params)
 
 		buf := bytes.Buffer{}
 		err = tmpl.Execute(&buf, params)
@@ -125,17 +132,13 @@ func saveTemplate(ctx context.Context, name string, text string) error {
 		return err
 	}
 
-	writeCtx, cancelWrite := context.WithCancel(ctx)
-	defer cancelWrite()
-
-	blobWriter, err := bucket.NewWriter(writeCtx, name, nil)
+	blobWriter, err := bucket.NewWriter(ctx, name, nil)
 	if err != nil {
 		return err
 	}
 
 	_, err = blobWriter.Write([]byte(text))
 	if err != nil {
-		cancelWrite()
 		blobWriter.Close()
 		return err
 	}
