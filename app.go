@@ -3,7 +3,6 @@ package main
 import (
 	"bytes"
 	"context"
-	"fmt"
 	"io/ioutil"
 	"os"
 	"strings"
@@ -102,7 +101,6 @@ func main() {
 			c.AbortWithStatus(404)
 			return
 		}
-		fmt.Println(params)
 
 		buf := bytes.Buffer{}
 		err = tmpl.Execute(&buf, params)
